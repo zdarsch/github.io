@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>adding-stress-marks-to-russian-text</title>
+<meta charset="utf-8">
+<style>
+body { margin: 60px auto; width: 70%; }
+a { text-decoration: none; color: #0000d5; }
+a:hover { text-decoration: underline; }
+p { font-size: 1em; line-height: 1em; color: #333; }
+h1,  h4 { font-family: 'Helvetica', 'Arial', 'Sans-Serif'; }
+h1 { font-size: 2em; color: #999;  }
+h4 { font-size: 1.2em; color: #999; }
+</style>
+</head>
+<body>
+<center><h1>Adding  stress marks to russian text</h1></center>
+
+<p>Only two letters  have  diacritics in the russian alphabet,  <b>й</b> ( SHORT I) and <b>ё</b> (IO). The former, despite its name,  is a consonnant and its diacritic is never omitted. The latter, on the contrary,  is a vowel and generally loses its diacritic in print. Besides, diacritical stress marks are used in dictionaries and ocasionally show up in print  whenever the meaning of a word is not clear from the context but  depends on the stress position.  Furthermore, <b>ё</b> is (nearly) always stressed  and thus  its diacritic is de facto a stress mark. Obviously, native speakers don't care much about  stress marks but language learners miss them.  
+
+<p>Nevertheless, it is possible to  automatically enrich russian text with (some) stress marks, even on web pages. Indeed, most  russian word forms have a single stress pattern and   techniques of  <i>diacritic restoration</i>   can be applied. This  project is intended for  learning and the users of such a program are assumed to be browsing the web and eager to learn. Hence,  the more interesting case of  context dependent stress is left to them. 
+
+<p>We drew inspiration from the <a href="http://www.jandaciuk.pl/fsa.html"> fsa package</a> of Jan Daciuk. Thus, the present project is based on <i>fsa_build</i> to build a minimal finite state  automaton and <i>fsa_accent</i>  to restore diacritics.
+
+ <h4>Collecting accented word forms</h4>
+ 
+<p>The first task is  to compile a list of accented wordforms. Luckily, freely available resources abound on the internet.  Simple scripts  can be used to extract the  information,  make  lists,  sort them, remove repetitions, convert from one encoding to another.
+
+<p>The encoding chosen for the list is  a modified  version of  standard <i>windows-1251</i> where  cyrillic characters not used in russian have been replaced by  accented vowels. It is  the code page of the  font <i>Timesse Russ</i> of <i>Fingertip Software</i>. Sadly,  the company are no longer selling  their products. However,  at the time of writing, an <a href="https://www.cyrillic.com/cyrstart/csk50.exe">evaluation version</a> and a  <a href="https://www.cyrillic.com/csw/cyr2000.pdf">user guide</a> are still  available.
+
+<p>Monosyllables have a single possible stress position, therefore most of them were removed  from the list. This doesn't mean that  monosyllables are  always stressed ( or unstressed !). 
+
+<p>Let us call homographs  accented words  undistinguishable  from one another when stripped of their  stress marks. For instance, the words <b>все'</b> and <b>всё</b>  are homographs. Should homographs go into the list? In the first version of the present project I removed them. Now, I had rather keep them and I would also keep a  monosyllable in the list if its  vowel is <b>е</b> or <b>ё</b>.
+
+<h4> The minimal Finite State Automaton</h4>
+
+<p>The next task is to build the minimal FSA that  recognizes our list of accented word forms. This automaton can  be viewed also as a Directed Acyclic Word Graph (DAWG ). 
+
+<p>As we follow the program <i>fsa_build</i> of Jan Daciuk to convert lexicographically sorted data to a minimal FSA, our word list requires further preparation. It should be sorted and without repetitions. These two conditions ensure the minimality of the automaton.
+
+<p> The algorithm is rather simple,  so I   wrote a ruby script to build an automaton with <i>final transitions</i>. Final transitions were chosen instead of final states because they yield a  smaller minimal automaton. Then, an automaton recognizing over two millions russian accented words was built and saved on disk in 710 KB. For  details,  see <a href="https://github.com/zdarsch/dawg-with-ruby"> dawg-with-ruby</a>  on <i>Github</i>.
+
+
+
+<h4>Marking stress</h4>
+
+<p>Our automaton which doesn't recognize <i>unaccented</i>  words  can be used to search for accented matches.  So, let <b>w</b> be an <i>unaccented</i> word.  The trick is to follow the transitions labelled with the letters of  <b>w</b> as usual but if the letter happens to be a vowel, we  also  try  the transitions labelled with  the corresponding accented vowels. For instance, if the letter is <b>е</b>,  we follow any transition labelled  <b>e</b> or  <b>e'</b> (<i>e acute</i>) or <b>e`</b> (<i>e grave</i>) or <b>ё</b>.
+
+<p>For the purpose of  marking stress, a word is a sequence of russian letters  of the standard russian alphabet without restriction to lowercase.  To capture compound words,    hyphens should  also be allowed in the sequence.  Then, given an <i>unaccented</i>  russian text, we take  words, one after the other, and search the automaton for accented matches.  
+
+<p>If a single match is found, we replace the word by the match. If no match is found, we leave the word unchanged. If two or three matches are found we also leave the word unchanged but a far better solution would be to give hints to the users to help them find  the right stress.   However,  as there are  thousands and thousands of homographs in russian, this would be a time-consuming project.
+
+<p> To keep things simple, I refrained from marking stress on capitalized words. Surely, one could change  the  first letter to  lower-case, before searching for an accented match  and  capitalize the first letter of the result if the search was successful. But,  the procedure  may give wrong results when applied to proper nouns. In fact, when case is ignored,  proper nouns  and common nouns might be homographs.
+
+<p>One way of  marking stress on web pages is through a server.  It is  simple to set up a local server  but,  for security reasons,  browsers set restrictions on local servers. To enable ajax requests, a  web extension is required. 
+
+<p>In the first version of this project,  I set up a <i>Webrick</i>  local server for marking stress and  the small web extension   for ajax was written in a few lines  of pure javascript. For  details,  see <a href="https://github.com/zdarsch/russian-stress-with-ruby"> russian-stress-with-ruby</a>  on <i>Github</i>.
+
+<h4>  Similar projects</h4>
+<p>1) The chrome extension <i>RussianGram</i>  adds  stress marks to russian web pages. The  pages are stress marked through the server of <i>russiangram.com</i>. The owner of the site and author of the extension has also written the tool <a href="https://github.com/bzaar/DAWGSharp">DAWGSharp</a> (DAWG in C&sharp;) which is  an essential part of the program. 
+<p> The site  <a href="https://russiangram.com" >russiangram.com</a>  also adds stress marks to russian text. If the submitted text  is too long, it gets truncated to 10 000 characters.  In some very  simple cases the program takes  the context into account. 
+
+<p> 2) The project <a href="https://algattik.github.io/SlavaTranslator/">SlavaTranslator</a> led to the  chrome extension <i>Slava Russian Dictionary</i> which also marks stress on russian web pages. In addition, when the mouse hovers over a  word,  a pop-up displays the definition in english together with other gramatical information  retrieved  from the <i >English-language wiktionary</i>. 
+
+<p> At the core of <i>Slava Russian Dictionary</i>, we find a  big json file  (31 MB) holding  a hash of 752 549 items. This   shows that the  browser's internal javascript itself is able to mark stress,   as long as it can load a big hash  where the keys are word forms and the values  stress patterns. Surprisingly, this extension works without  a  server and without  a DAWG.
+
+<h4> Concluding remarks</h4>
+<p> Guided by the <i>fsa package</i> of  Jan Daciuk,  I  first built a FSA,  then set up  a local  server  and finally wrote a simple  extension to overcome the browser's restrictions.
+<p> Now, it appears  that a server is not necessary though an extension is still required. Hopefully, the automaton I built with ruby and saved on disk could as well be read by  the  browser's internal javascript engine and the rest of  the work could be done inside the browser.
+</body>
+</html>
+
